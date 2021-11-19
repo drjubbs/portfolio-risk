@@ -44,9 +44,15 @@ class TestFinance(unittest.TestCase):
             finance.calc_internal_ror(example2), 8.5683))
 
     def test_finddates(self):
-        """Find closest date in a DataFrame"""
+        """Tests for finding closest date in a DataFrame"""
 
         df_test = pd.read_csv("test_dates.csv", parse_dates=['datetime'])
+
+        # March 1 should throw an exception because it is outside of the
+        # DataFrame range.
+        with self.assertRaises(ValueError):
+            finance.return_closest_time(
+                              df_test, dt.datetime(2021, 3, 1))
 
         # June 4th should be the first of month
         row = finance.return_closest_time(df_test, dt.datetime(2021, 6, 4))
@@ -58,10 +64,16 @@ class TestFinance(unittest.TestCase):
         self.assertEqual(row.datetime.to_pydatetime(),
                          dt.datetime(2021, 6, 23))
 
-        # July 24 should give us the last row, June 25th
-        row = finance.return_closest_time(df_test, dt.datetime(2021, 7, 24))
+        # June 29th should give us the last entry
+        row = finance.return_closest_time(df_test, dt.datetime(2021, 6, 29))
         self.assertEqual(row.datetime.to_pydatetime(),
-                         dt.datetime(2021, 6, 25))
+                         dt.datetime(2021, 6, 30))
+
+        # July 24 should throw an exception
+        with self.assertRaises(ValueError):
+            row = finance.return_closest_time(df_test, dt.datetime(2021, 7, 24))
+            self.assertEqual(row.datetime.to_pydatetime(),
+                             dt.datetime(2021, 6, 25))
 
 
 if __name__ == '__main__':

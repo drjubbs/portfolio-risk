@@ -47,7 +47,20 @@ def calc_internal_ror(df_in):
 
 def return_closest_time(df_in, date_in):
     """Given a DataFrame with a `datetime` column, find the row which is
-    closests to `date_in` and return as a series."""
+    closests to `date_in` and return as a series.
+
+    If two dates are equi-distant, take the earlier date. Throw an exception
+    if the requested date is outside of the timespan of the data frame.
+    """
+
+    df_in = df_in.sort_values(by='datetime')
+
+    if date_in < df_in.datetime.min().to_pydatetime():
+        raise ValueError("date_in prior to begin of DataFrame")
+
+    if date_in > df_in.datetime.max().to_pydatetime():
+        raise ValueError("date_in after end of DataFrame")
+
     time_deltas = abs(df_in.datetime-date_in)
     mask = time_deltas == min(time_deltas)
     return df_in[mask].iloc[0, :]
