@@ -111,3 +111,20 @@ def create_flows(df_dates, in_amount, dt_begin, in_offsets, out_offset):
     df_out_flows = df_out_flows[['datetime', 'adj_close', 'shares', 'flows']]
 
     return df_in_flows.append(df_out_flows)
+
+
+def calc_simple_roi(df_in):
+    """Calculate a simplified rate of return (investment in vs. out). Assumes
+    `df_in` is sorted by date and returns ROI on a annualized basis
+    """
+
+    mask = df_in.flows < 0
+    begin = df_in[mask].iloc[0, :].datetime.to_pydatetime()
+    total_in = -1 * df_in[mask].flows.sum()
+
+    mask = df_in.flows > 0
+    end = df_in[df_in.flows > 0].iloc[-1, :].datetime.to_pydatetime()
+    total_out = df_in[mask].flows.sum()
+
+    years = (end-begin).days/365.25
+    return (total_out-total_in)/total_in/years*100

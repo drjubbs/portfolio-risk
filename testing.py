@@ -122,7 +122,8 @@ class TestFinance(unittest.TestCase):
                          df_flows1.iloc[-1, :].datetime.to_pydatetime())
 
         # IRR should be near 7...
-        delta_rate = (7.0 - finance.calc_internal_ror(df_flows1))
+        irr1 = finance.calc_internal_ror(df_flows1)
+        delta_rate = (7.0 - irr1)
         self.assertTrue(delta_rate < 0.01)
 
         # Offset in dataframe, investment split up...
@@ -131,10 +132,19 @@ class TestFinance(unittest.TestCase):
                                     1000,
                                     dt.datetime(1979, 7, 23),
                                     [0, 365, 2*365],
-                                    int(365.25*5))
+                                    int(365.25*10))
 
         delta_rate = (7.0 - finance.calc_internal_ror(df_flows2))
         self.assertTrue(delta_rate < 0.01)
+
+        # Test simplified rate of return calculations
+        roi1 = finance.calc_simple_roi(df_flows1)
+        roi2 = finance.calc_simple_roi(df_flows2)
+
+        # Simple ROI should be greater than IRR due to compounding interest
+        self.assertTrue(roi1 > irr1)
+        # Splitting investments should reduce ROR
+        self.assertTrue(roi1 > roi2)
 
 
 if __name__ == '__main__':
