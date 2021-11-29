@@ -27,6 +27,7 @@ import numpy as np
 from dateutil import parser
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
+import plotly.express as px
 import finance
 ```
 
@@ -83,12 +84,12 @@ vfinx
 ```python
 # Make first row the start of the index adjustment
 scaling = vfinx.iloc[0, :].cpi
-vfinx['cpi_adj_close'] = vfinx['adj_close']*scaling/vfinx['cpi']
+vfinx['adj_close'] = vfinx['adj_close']*scaling/vfinx['cpi']
 vfinx
 ```
 
 ```python
-scatter_vfinx_cpi = go.Scatter(x=vfinx['datetime'], y=vfinx['cpi_adj_close'], name='VFINX CPI Adjusted')
+scatter_vfinx_cpi = go.Scatter(x=vfinx['datetime'], y=vfinx['adj_close'], name='VFINX CPI Adjusted')
 fig = go.Figure()
 fig.add_trace(scatter_vfinx)
 fig.add_trace(scatter_vfinx_cpi)
@@ -97,57 +98,50 @@ fig.update_yaxes(type="log", title='Index Level')
 fig.show()
 ```
 
-## Rate of return, lump sum
+## Rate of return over time for a lump sum
 
 ```python
-# Start at the first date we have index data for
-start = vfinx.iloc[0,:].datetime.to_pydatetime()
-end = vfinx.iloc[-1,:].datetime.to_pydatetime()-timedelta(365*HORIZON)
-print("{0} to {1}".format(start, end))
+df_ror0, go_histo0 = finance.rolling_rate_of_return(vfinx, [0], "Lump Sum", HORIZON)
 ```
 
 ```python
-this_start = start
-desired_end = start + timedelta(365*HORIZON)
-```
-
-```python
-invest = -100*vfinx[vfinx.datetime==this_start].cpi_adj_close[0]
-```
-
-```python
-row = finance.return_closest_time(vfinx, desired_end)
-divest = 100*row.cpi_adj_close
-this_end = row.datetime
-print("Requested end: {0} Actual end: {1}".format(desired_end, this_end))
-```
-
-```python
-df_irr = pd.DataFrame({'datetime': [this_start, this_end], 'flows': [invest, divest]})
-df_irr
-```
-
-```python
-finance.calc_npv(df_irr, -200)
-```
-
-Calculate the NPV at several rates of return over an internval. Where this function crosses zero is the internal rate of return.
-
-```python
-npv = []
-rates = np.linspace(0,15)
-for rate in rates:    
-    npv.append(finance.calc_npv(df_irr, rate))
-npv = go.Scatter(x=rates, y=npv, name='npv')
 fig = go.Figure()
-fig.add_trace(npv)
-fig.update_xaxes(title='Discount Rate %)')
-fig.update_yaxes(title='NPV')
+fig.add_trace(go.Scatter(x=df_ror0['datetime'], y=df_ror0['ror']))
+fig.update_xaxes(title='Year of Initial Investment')
+fig.update_yaxes(title='Simple Annualized ROR (%)')
 fig.show()
 ```
 
 ```python
-finance.calc_internal_ror(df_irr)
+fig = go.Figure()
+fig.add_trace(go_histo0)
+fig.show()
+```
+
+# Divided into 3 lumps, 1 year apart
+
+```python
+df_ror3, go_histo3 = finance.rolling_rate_of_return(vfinx, [0, 365.25, 2*365.25], "3 Lumps, One Year Spacing", HORIZON)
+```
+
+```python
+fig = go.Figure()
+fig.add_trace(go_histo0)
+fig.add_trace(go_histo3)
+fig.update_layout(barmode='overlay')
+fig.show()
+```
+
+Sanity check on results - the division into lumps should reduce overall return but also return the standard deviation of the returns. This is what will create the pareto curve.
+
+```python
+print(np.mean(df_ror0['ror']))
+print(np.mean(df_ror3['ror']))
+```
+
+```python
+print(np.std(df_ror0['ror']))
+print(np.std(df_ror3['ror']))
 ```
 
 ```python

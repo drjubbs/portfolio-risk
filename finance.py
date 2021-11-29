@@ -7,6 +7,7 @@ import datetime as dt
 from functools import partial
 from scipy.optimize import root
 import pandas as pd
+import plotly.graph_objects as go
 
 
 def calc_npv(df_in, discount):
@@ -128,3 +129,45 @@ def calc_simple_roi(df_in):
 
     years = (end-begin).days/365.25
     return (total_out-total_in)/total_in/years*100
+
+
+def rolling_rate_of_return(df_index, offsets, label, horizon):
+    """Loop over an index, going forward in time, and return
+    simple rate of return on investment.
+
+    df_index: DataFrame, price level of index of interest
+    offsets: List of days, determines how to split investment
+    label: Text label for this series
+    horizon: End of investment period in years from first
+             investment.
+
+    Returns:
+        df_ror: DataFrame with dates and rates of return
+        go_histo: Plotly graph object containg a histogram
+                  of returns
+    """
+
+    # Last date we have index data for
+    dt_end = df_index.iloc[-1, :].datetime.to_pydatetime()
+
+    # Window size in days
+    dt_horizon = dt.timedelta(days=int(horizon*365.25))
+
+    idx = 0
+    start = df_index.iloc[0, :].datetime.to_pydatetime()
+    dates = []
+    ror = []
+    while start+dt_horizon <= dt_end:
+        flows = create_flows(df_index, 100,  start, offsets,
+                             int(horizon*365.25))
+        ror.append(calc_simple_roi(flows))
+        dates.append(start)
+        idx = idx + 1
+        start = df_index.iloc[idx, :].datetime.to_pydatetime()
+
+    df_ror = pd.DataFrame({'datetime': dates, 'ror': ror})
+    go_histo = go.Histogram(x=ror,
+                            xbins=dict(start=-10, end=40, size=1),
+                            name=label)
+
+    return df_ror, go_histo
