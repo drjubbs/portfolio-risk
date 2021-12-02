@@ -138,13 +138,14 @@ class TestFinance(unittest.TestCase):
         self.assertTrue(delta_rate < 0.01)
 
         # Test simplified rate of return calculations
-        roi1 = finance.calc_simple_roi(df_flows1)
-        roi2 = finance.calc_simple_roi(df_flows2)
+        roi1 = finance.calc_modified_irr(df_flows1)
+        roi2 = finance.calc_modified_irr(df_flows2)
 
-        # Simple ROI should be greater than IRR due to compounding interest
-        self.assertTrue(roi1 > irr1)
-        # Splitting investments should reduce ROR
+        # Since index always increases, irr should be highest for a single
+        # investment.
         self.assertTrue(roi1 > roi2)
+        self.assertAlmostEqual(round(roi1, 2), 7.00, 2)
+        self.assertAlmostEqual(round(roi2, 3), 6.295, 2)
 
 
 if __name__ == '__main__':

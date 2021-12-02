@@ -50,6 +50,37 @@ def calc_internal_ror(df_in):
     return soln.x[0]
 
 
+def calc_modified_irr(df_in):
+    """Calculate a rate of return assuming investments past time 0 were
+    sitting in a zero interest money market fund. This is critical to getting
+    accurate rate of return values -- the initial cash outlay completely
+    occurs at t=0 and subsequent transfers into the index fund net out to zero.
+
+    Another way of saying this is that all investments need to come back to
+    t = 0 for purposes of calculating rate of return.
+    """
+
+    mask = df_in.flows < 0
+    begin = df_in[mask].iloc[0, :].datetime.to_pydatetime()
+    total_in = -1 * df_in[mask].flows.sum()
+
+    mask = df_in.flows > 0
+    end = df_in[df_in.flows > 0].iloc[-1, :].datetime.to_pydatetime()
+    total_out = df_in[mask].flows.sum()
+
+    df_flows = pd.DataFrame({
+        'datetime': [begin, end],
+        'flows': [-total_in, total_out]
+    })
+
+    return calc_internal_ror(df_flows)
+
+
+
+    years = (end-begin).days/365.25
+    return (total_out-total_in)/total_in/years*100
+
+
 def return_closest_time(df_in, date_in):
     """Given a DataFrame with a `datetime` column, find the row which is
     closests to `date_in` and return as a series.
@@ -114,23 +145,6 @@ def create_flows(df_dates, in_amount, dt_begin, in_offsets, out_offset):
     return df_in_flows.append(df_out_flows)
 
 
-def calc_simple_roi(df_in):
-    """Calculate a simplified rate of return (investment in vs. out). Assumes
-    `df_in` is sorted by date and returns ROI on a annualized basis
-    """
-
-    mask = df_in.flows < 0
-    begin = df_in[mask].iloc[0, :].datetime.to_pydatetime()
-    total_in = -1 * df_in[mask].flows.sum()
-
-    mask = df_in.flows > 0
-    end = df_in[df_in.flows > 0].iloc[-1, :].datetime.to_pydatetime()
-    total_out = df_in[mask].flows.sum()
-
-    years = (end-begin).days/365.25
-    return (total_out-total_in)/total_in/years*100
-
-
 def rolling_rate_of_return(df_index, offsets, label, horizon):
     """Loop over an index, going forward in time, and return
     simple rate of return on investment.
@@ -160,7 +174,7 @@ def rolling_rate_of_return(df_index, offsets, label, horizon):
     while start+dt_horizon <= dt_end:
         flows = create_flows(df_index, 100,  start, offsets,
                              int(horizon*365.25))
-        ror.append(calc_simple_roi(flows))
+        ror.append(calc_modified_irr(flows))
         dates.append(start)
         idx = idx + 1
         start = df_index.iloc[idx, :].datetime.to_pydatetime()
